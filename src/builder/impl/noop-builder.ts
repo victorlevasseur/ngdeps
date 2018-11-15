@@ -5,8 +5,8 @@ export class NoopBuilder implements Builder {
     build(moduleName: string, targetModuleName: string, extraCommands: string): Promise<BuilderResult> {
         return new Promise((resolve, reject) => {
             setTimeout(() => {
-                if (moduleName.search('error')) {
-                    reject({
+                if (moduleName.search('error') !== -1) {
+                    resolve({
                         success: false,
                         detail: 'Big problem!!!'
                     });
@@ -17,6 +17,12 @@ export class NoopBuilder implements Builder {
                     });
                 }
             }, 1000 * moduleName.length);
+        });
+    }
+
+    stop(): Promise<void> {
+        return new Promise((resolve, reject) => {
+            setTimeout(() => resolve(), 1000);
         });
     }
 }

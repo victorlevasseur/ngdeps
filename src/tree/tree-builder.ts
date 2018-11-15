@@ -19,10 +19,9 @@ export function buildTree(file: NgdepsFile, targetModuleName: string): BuildTree
         }
     }
 
-    const rootNode = generateBuildNodes(targetModule, [], file.modules);
+    const rootNode = generateBuildNodes(targetModule, targetModule, [], file.modules);
 
-    // FIXME leafs!!!!!!!
-    return new BuildTree(rootNode.node, [], rootNode.discoveredNodes);
+    return new BuildTree(rootNode.node, rootNode.discoveredNodes);
 }
 
 /**
@@ -70,6 +69,7 @@ function checkDeps(
  */
 function generateBuildNodes(
     module: NgdepsModule, 
+    targetModule: NgdepsModule,
     knownNodes: BuildNode[], 
     modules: NgdepsModule[]): 
     { node: BuildNode, discoveredNodes: BuildNode[] } {
@@ -84,14 +84,14 @@ function generateBuildNodes(
             if (dependencyAlreadyKnown) {
                 return dependencyAlreadyKnown;
             } else {
-                const depNode = generateBuildNodes(<NgdepsModule>modules.find((m) => m.name === dependencyName), knownNodesUpdated, modules);
+                const depNode = generateBuildNodes(<NgdepsModule>modules.find((m) => m.name === dependencyName), targetModule, knownNodesUpdated, modules);
                 knownNodesUpdated = depNode.discoveredNodes;
                 return depNode.node;
             }
         });
 
     // Generate the node.
-    const generatedNode = new BuildNode(module.name, new buildersList[module.builder](), moduleDeps)
+    const generatedNode = new BuildNode(module.name, targetModule.name, new buildersList[module.builder](), moduleDeps)
     return {
         node: generatedNode,
         discoveredNodes: [...knownNodesUpdated, generatedNode]

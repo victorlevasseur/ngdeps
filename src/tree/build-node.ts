@@ -13,7 +13,8 @@ export class BuildNode {
 
     private _detail?: string;
 
-    constructor(public readonly moduleName: string, public readonly builder: Builder, public dependencies: BuildNode[]) {}
+    constructor(public readonly moduleName: string, public readonly targetModuleName: string, 
+        public readonly builder: Builder, public dependencies: BuildNode[]) {}
 
     get status(): BuildNodeStatus {
         return this._status;
@@ -21,6 +22,10 @@ export class BuildNode {
 
     get detail(): string | undefined {
         return this._detail;
+    }
+
+    markWaiting(): void {
+        this._status = BuildNodeStatus.WAITING;
     }
 
     markPending(): void {

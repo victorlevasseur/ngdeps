@@ -8,4 +8,9 @@ export interface Builder {
    * @param extraCommands extra args received by ngdeps.
    */
   build(moduleName: string, targetModuleName: string, extraCommands: string): Promise<BuilderResult>;
+
+  /**
+   * Stop building the module.
+   */
+  stop(): Promise<void>;
 }
