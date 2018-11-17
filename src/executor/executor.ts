@@ -11,6 +11,8 @@ export class Executor {
 
     private currentBuildingNode?: BuildNode;
 
+    private isStopping = false;
+
     constructor(private id: number) {}
 
     isBuilding(): boolean {
@@ -71,26 +73,37 @@ export class Executor {
             this.currentBuildingNode.building();
             this.currentBuildingNode.builder.build(this.currentBuildingNode.moduleName, tree.target.moduleName, /* FIXME */'')
                 .then((result) => {
-                    if (!this.currentBuildingNode) {
-                        throw new Error('Should not happen!');
+                    if (this.currentBuildingNode) {
+                        // Check if the scheduler has put back the node to pending or waiting status.
+                        // If not, mark the node as success or error depending on the builder's result.
+                        if (result.success) {
+                            this.currentBuildingNode.success(result.detail);
+                            this.log(`success building ${this.currentBuildingNode.moduleName}.`);
+                        } else {
+                            this.currentBuildingNode.error(result.detail);
+                            this.log(`error building ${this.currentBuildingNode.moduleName}.`);
+                        }
+                        
+                        this.currentBuildingNode = undefined;
                     }
-
-                    // Check if the scheduler has put back the node to pending or waiting status.
-                    // If not, mark the node as success or error depending on the builder's result.
-                    if (result.success) {
-                        this.currentBuildingNode.success(result.detail);
-                        this.log(`success building ${this.currentBuildingNode.moduleName}.`);
-                    } else {
-                        this.currentBuildingNode.error(result.detail);
-                        this.log(`error building ${this.currentBuildingNode.moduleName}.`);
-                    }
-                    
-                    this.currentBuildingNode = undefined;
                 });
+        } else {
+            // Check if the currently building node finally has dirty deps after the build started.
+            // It can be seen from the 'wait_for_deps' preBuild status.
+            if (!this.isStopping && this.currentBuildingNode.isWaitingForDeps()) {
+                this.isStopping = true;
+                this.currentBuildingNode.builder.stop()
+                    .then(() => {
+                        this.isStopping = false;
+                        // The node may have been built correctly just in the mean time.
+                        if (this.currentBuildingNode) {
+                            this.log(`abort building ${this.currentBuildingNode.moduleName} for dirty dep.`);
+                            this.currentBuildingNode.abortBuild();
+                            this.currentBuildingNode = undefined;
+                        }
+                    });
+            }
         }
-        // TODO: If a node is currently building, check for 'waiting_for_build' status, meaning the schedule wants a new build:
-        // in this case, stop the build and let another (or same) executor take the next build.
-        // NOT MANDATORY but gain time on frequent reschedulings.
     }
 
     private log(message: string): void {

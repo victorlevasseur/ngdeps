@@ -77,6 +77,14 @@ export class BuildNode {
         return this;
     }
 
+    abortBuild(): this {
+        if (!this.isBuilding()) {
+            throw new Error('Cannot abort a node build while not building');
+        }
+        this._statusInfo.build = 'not_building';
+        return this;
+    }
+
     success(detail?: string): this {
         if (!this.isBuilding()) {
             throw new Error('Cannot marke a build node success while building');

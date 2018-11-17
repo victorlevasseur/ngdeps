@@ -29,12 +29,12 @@ new BuildScheduler(4).schedule(tree)
     });
 
 // Just to rebuild DDD when the nodes depending on it (B) have started building to test the "build until stable" feature.
-/*setTimeout(() => {
+setTimeout(() => {
     const moduleToRebuild = tree.nodes.find((n) => n.moduleName === 'DDD');
     if (moduleToRebuild) {
         moduleToRebuild.depsNotReady();
     }
-}, 6000);*/
+}, 2500);
 
 /**
  * TODO
