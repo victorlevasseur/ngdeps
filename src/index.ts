@@ -10,7 +10,7 @@ const tree = buildTree({
         { name: 'D', builder: 'noop', dependencies: [] },
         { name: 'E', builder: 'noop', dependencies: ['D'] },
         { name: 'F', builder: 'noop', dependencies: ['A', 'B', 'E'] }*/
-        { name: 'A', builder: 'noop', dependencies: ['B', 'C', 'DDD'] },
+        { name: 'A', builder: 'noop', dependencies: ['B', 'C', 'DDD', 'E'] },
         { name: 'B', builder: 'noop', dependencies: ['DDD'] },
         { name: 'C', builder: 'noop', dependencies: ['E'] },
         { name: 'DDD', builder: 'noop', dependencies: [] },
@@ -29,12 +29,12 @@ new BuildScheduler(4).schedule(tree)
     });
 
 // Just to rebuild DDD when the nodes depending on it (B) have started building to test the "build until stable" feature.
-setTimeout(() => {
+/*setTimeout(() => {
     const moduleToRebuild = tree.nodes.find((n) => n.moduleName === 'DDD');
     if (moduleToRebuild) {
-        moduleToRebuild.markWaiting();
+        moduleToRebuild.depsNotReady();
     }
-}, 6000);
+}, 6000);*/
 
 /**
  * TODO

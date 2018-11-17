@@ -1,5 +1,5 @@
-import { BuildNode, BuildNodeStatus } from "../tree/build-node";
-import { BuildQueue } from "./build-queue";
+import { BuildNode } from "../tree/build-node";
+import { BuildTree } from "../tree/build-tree";
 
 /**
  * The executor is responsible for treating task from a queue of pending nodes.
@@ -25,9 +25,9 @@ export class Executor {
         return this.isRunning() && !this.isBuilding();
     }
 
-    start(data: BuildQueue): void {
+    start(tree: BuildTree): void {
         this.awarenessTimerId = setInterval(() => {
-            this.doWork(data);
+            this.doWork(tree);
         }, Executor.AWARENESS_INTERVAL);
         this.log('started.');
     }
@@ -46,7 +46,7 @@ export class Executor {
                     if (!this.currentBuildingNode) {
                         throw new Error('Should not happen!');
                     }
-                    this.currentBuildingNode.markError('Stopped!');
+                    this.currentBuildingNode.abort('Stopped!');
                     this.log('stopped.');
                 });
         } else {
@@ -55,51 +55,21 @@ export class Executor {
         }
     }
 
-    private pickFirstAvailableNode(data: BuildQueue): BuildNode|undefined {
-        if (data.pendingNodes.length > 0) {
-            // TODO rewrite as while.
-            //this.log(data.lockedNodes.reduce((s, n) => s + n.moduleName + ',', ''));
-            let index = 0;
-            let newBuildingNode: BuildNode|undefined;
-            // Find the first node in the queue that is pending and not locked (by another executor).
-            do {
-                const queueNode = data.pendingNodes[index];
-                if (queueNode.status === BuildNodeStatus.PENDING && 
-                    data.lockedNodes.find((n) => n.moduleName === queueNode.moduleName) === undefined) {
-                    newBuildingNode = queueNode;
-                }
-                index++;
-            } while(newBuildingNode === undefined && index < data.pendingNodes.length)
-            
-            if (index < data.pendingNodes.length) {
-                data.pendingNodes.splice(index, 1);
-            }
-            return newBuildingNode;
-        } else {
-            return undefined
-        }
+    private pickFirstAvailableNode(tree: BuildTree): BuildNode|undefined {
+        return tree.nodes.find((n) => n.isReadyForBuild());
     }
 
-    private lockNode(data: BuildQueue, node: BuildNode, enable: boolean) {
-        if (enable) {
-            data.lockedNodes.push(node);
-        } else {
-            data.lockedNodes = data.lockedNodes.filter((n) => n.moduleName !== node.moduleName);
-        }
-    }
-
-    private doWork(data: BuildQueue): void {
+    private doWork(tree: BuildTree): void {
         if (!this.currentBuildingNode) {
-            const newBuildingNode = this.pickFirstAvailableNode(data);
+            const newBuildingNode = this.pickFirstAvailableNode(tree);
             if (!newBuildingNode) {
                 return;
             }
-            this.lockNode(data, newBuildingNode, true);
             this.log(`building ${newBuildingNode.moduleName}...`);
 
             this.currentBuildingNode = newBuildingNode;
-            this.currentBuildingNode.markBuilding();
-            this.currentBuildingNode.builder.build(this.currentBuildingNode.moduleName, data.targetModuleName, /* FIXME */'')
+            this.currentBuildingNode.building();
+            this.currentBuildingNode.builder.build(this.currentBuildingNode.moduleName, tree.target.moduleName, /* FIXME */'')
                 .then((result) => {
                     if (!this.currentBuildingNode) {
                         throw new Error('Should not happen!');
@@ -107,28 +77,19 @@ export class Executor {
 
                     // Check if the scheduler has put back the node to pending or waiting status.
                     // If not, mark the node as success or error depending on the builder's result.
-                    if (this.currentBuildingNode.status === BuildNodeStatus.BUILDING) {
-                        if (result.success) {
-                            this.currentBuildingNode.markSuccess(result.detail);
-                            this.log(`success building ${this.currentBuildingNode.moduleName}.`);
-                        } else {
-                            this.currentBuildingNode.markError(result.detail);
-                            this.log(`error building ${this.currentBuildingNode.moduleName}.`);
-                        }
+                    if (result.success) {
+                        this.currentBuildingNode.success(result.detail);
+                        this.log(`success building ${this.currentBuildingNode.moduleName}.`);
                     } else {
-                        // If the scheduler put the node to WAITING or PENDING during the build,
-                        // it means the dependencies may have been updated.
-                        // Do not mark the node as success or error but leave it in its state so that
-                        // another executor will pick it to rebuild it.
-                        this.log(`obsolete building ${this.currentBuildingNode.moduleName} (with status: ${this.currentBuildingNode.status}). Will be redone soon.`);
+                        this.currentBuildingNode.error(result.detail);
+                        this.log(`error building ${this.currentBuildingNode.moduleName}.`);
                     }
                     
-                    this.lockNode(data, this.currentBuildingNode, false);
                     this.currentBuildingNode = undefined;
                 });
         }
-        // TODO: If a node is currently building, check for WAITING or PENDING status, meaning the schedule wants a new build:
-        // in this case, stop the build and leave the node in its WAITING or PENDING status.
+        // TODO: If a node is currently building, check for 'waiting_for_build' status, meaning the schedule wants a new build:
+        // in this case, stop the build and let another (or same) executor take the next build.
         // NOT MANDATORY but gain time on frequent reschedulings.
     }
 

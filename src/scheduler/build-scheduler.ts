@@ -1,9 +1,7 @@
 import { Scheduler } from "./scheduler";
 import { BuildTree } from "../tree/build-tree";
 import { Executor } from "../executor/executor";
-import { BuildNode, BuildNodeStatus } from "../tree/build-node";
-import { BuildQueue } from "../executor/build-queue";
-import { toUnicode } from "punycode";
+import { BuildNode } from "../tree/build-node";
 
 export class BuildScheduler implements Scheduler {
 
@@ -21,18 +19,12 @@ export class BuildScheduler implements Scheduler {
         return this.stopAllExecutors()
             .then(() => {
                 // Start all the executors.
-                const buildQueue: BuildQueue = {
-                    targetModuleName: buildTree.target.moduleName,
-                    pendingNodes: [],
-                    lockedNodes: []
-                };
-                this.executors.forEach((e) => e.start(buildQueue));
-                return buildQueue;
+                this.executors.forEach((e) => e.start(buildTree));
             })
-            .then((buildQueue) => {
+            .then(() => {
                 return new Promise<boolean>((resolve, reject) => {
                     this.awarenessIntervalId = setInterval(() => {
-                        const workResult = this.doWork(buildTree, buildQueue);
+                        const workResult = this.doWork(buildTree);
 
                         if (workResult !== undefined) {
                             this.stop();
@@ -46,14 +38,11 @@ export class BuildScheduler implements Scheduler {
             });
     }
 
-    private doWork(buildTree: BuildTree, buildQueue: BuildQueue): boolean|undefined {
-        const { status } = this.updateNodeStatus(buildTree.target, []);
-        buildQueue.pendingNodes = this.getQueue(buildTree.target, []);
-        console.log('Queue is: ' + buildQueue.pendingNodes.map((n) => n.moduleName + ' '));
-        console.log('Lock is: ' + buildQueue.lockedNodes.map((n) => n.moduleName + ' '));
-        if (this.isDoneStatus(status)) {
+    private doWork(buildTree: BuildTree): boolean|undefined {
+        this.updateNodeStatus(buildTree.target, []);
+        if (buildTree.target.isDone()) {
             // If error, display error.
-            return status === BuildNodeStatus.SUCCESS;
+            return buildTree.target.isDoneWithSuccess();
         }
 
         return undefined;
@@ -70,7 +59,7 @@ export class BuildScheduler implements Scheduler {
     }
 
     private findErrors(buildTree: BuildTree): string|undefined {
-        const erroredNode = buildTree.nodes.find((n) => n.status === BuildNodeStatus.ERROR);
+        const erroredNode = buildTree.nodes.find((n) => n.isDoneWithAbort() || n.isDoneWithError());
         if (erroredNode) {
             return erroredNode.detail
         } else {
@@ -83,56 +72,31 @@ export class BuildScheduler implements Scheduler {
      * @param buildNode 
      * @param alreadyUpdatedNodes
      */
-    private updateNodeStatus(buildNode: BuildNode, alreadyUpdatedNodes: BuildNode[]): { status: BuildNodeStatus, updatedNodes: BuildNode[] } {
+    private updateNodeStatus(buildNode: BuildNode, alreadyUpdatedNodes: BuildNode[]): BuildNode[] {
         // Update the state of the not already updated nodes based on the dependencies and the already updated node (from concurrent recursions).
         let updatedNodes = [...alreadyUpdatedNodes];
-        const depsStatus = buildNode.dependencies.map((d) => {
+
+        // Update the not yet updated deps.
+        buildNode.dependencies.forEach((d) => {
             const alreadyUpdatedDep = alreadyUpdatedNodes.find((n) => n.moduleName === d.moduleName);
-            if (alreadyUpdatedDep) {
-                return alreadyUpdatedDep.status;
-            } else {
+            if (!alreadyUpdatedDep) {
                 const updatedDepInfo = this.updateNodeStatus(d, updatedNodes);
-                updatedNodes = [...updatedNodes, ...updatedDepInfo.updatedNodes];
-                return updatedDepInfo.status;
+                updatedNodes = [...updatedNodes, ...updatedDepInfo];
             }
         });
 
-        // If the node is waiting but all the deps are done, make it pending.
-        if (buildNode.status === BuildNodeStatus.WAITING && 
-            depsStatus.find((s) => s !== BuildNodeStatus.SUCCESS) === undefined) {
-            buildNode.markPending();
-        } else if (buildNode.status !== BuildNodeStatus.WAITING && 
-            depsStatus.find((s) => !this.isDoneStatus(s)) !== undefined) {
+        // If the node is waiting but all the deps are done with success, make it "deps ready".
+        if (buildNode.isWaitingForDeps() && 
+            buildNode.dependencies.find((s) => !s.isDoneWithSuccess()) === undefined) {
+            buildNode.depsReady();
+        } else if (!buildNode.isWaitingForDeps() && 
+            buildNode.dependencies.find((s) => !s.isDone()) !== undefined) {
             // If the node is not marked WAITING (may be PENDING, BUILDING or done)
-            // but a dep is set to a "not done" status, set the node back to waiting.
-            buildNode.markWaiting();
+            // but a dep is set to a "not done" status, set the node back to waiting for deps.
+            buildNode.depsNotReady();
         }
 
-        return {
-            status: buildNode.status,
-            updatedNodes: [...updatedNodes, buildNode]
-        };
-    }
-
-    private getQueue(buildNode: BuildNode, queue: BuildNode[]): BuildNode[] {
-        if (buildNode.status === BuildNodeStatus.PENDING) {
-            // Don't add the same node multiple times.
-            if (queue.find((n) => n.moduleName === buildNode.moduleName) === undefined) {
-                return [...queue, buildNode];
-            }
-            return queue;
-            // The deps are expected not to be PENDING if the node is PENDING.
-        } else {
-            let newQueue = [...queue];
-            buildNode.dependencies.forEach((d) => {
-                newQueue = this.getQueue(d, newQueue);
-            });
-            return newQueue;
-        }
-    }
-
-    private isDoneStatus(status: BuildNodeStatus): boolean {
-        return status === BuildNodeStatus.SUCCESS || status === BuildNodeStatus.ERROR;
+        return [...updatedNodes, buildNode];
     }
 
 }
