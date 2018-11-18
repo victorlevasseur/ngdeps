@@ -1,6 +1,6 @@
 {
   "name": "ngdeps",
-  "version": "1.0.2",
+  "version": "1.0.9",
   "main": "cli.js",
   "author": "Victor Levasseur",
   "license": "MIT",
@@ -16,7 +16,8 @@
     "typescript": "^3"
   },
   "dependencies": {
-    "commander": "^2.19.0"
+    "commander": "^2.19.0",
+    "terminal-kit": "^1.26.5"
   },
   "bin": {
     "ngdeps": "./cli.js"

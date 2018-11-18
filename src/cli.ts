@@ -2,6 +2,7 @@
 
 import * as program from 'commander';
 import * as os from 'os';
+const terminal = require('terminal-kit').terminal;
 import { readNgdepFile } from "./input/file-reader";
 import { buildTree } from './tree/tree-builder';
 import { BuildScheduler } from './scheduler/build-scheduler';
@@ -26,12 +27,14 @@ readNgdepFile('ngdeps.json')
     })
     .then((result) => {
         if (result === true) {
-            console.log('Successfully built.');
+            terminal.green.bold('Successfully built.');
+            terminal.processExit(0);
         } else {
-            throw new Error('Build error!');
+            throw new Error('Build error!'); // Get the detail of the failed node.
         }
     })
     .catch((e: Error) => {
-        console.error(e.message);
-        process.exit(1);
+        terminal.red.bold('Build error.\n\n')
+        terminal.red(e.message);
+        terminal.processExit(1);
     });

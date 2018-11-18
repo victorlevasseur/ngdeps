@@ -1,3 +1,4 @@
+const terminal = require('terminal-kit').terminal;
 import { BuildNode } from "../tree/build-node";
 import { BuildTree } from "../tree/build-tree";
 
@@ -38,7 +39,6 @@ export class Executor {
         if (!this.awarenessTimerId) {
             throw new Error('Trying to stop executor while not even started!');
         }
-        this.log('stopping...');
         clearInterval(this.awarenessTimerId);
         this.awarenessTimerId = undefined;
 
@@ -48,10 +48,8 @@ export class Executor {
                     if (this.currentBuildingNode) {
                         this.currentBuildingNode.abort('Stopped!');
                     }
-                    this.log('stopped.');
                 });
         } else {
-            this.log('stopped.');
             return Promise.resolve();
         }
     }
@@ -106,6 +104,7 @@ export class Executor {
     }
 
     private log(message: string): void {
-        console.log(`[${this.id}] ${message}`);
+        terminal.bold(`[${this.id}] `);
+        terminal(`${message}\n`);
     }
 }

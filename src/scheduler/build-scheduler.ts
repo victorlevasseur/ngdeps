@@ -1,3 +1,4 @@
+const terminal = require('terminal-kit').terminal;
 import { Scheduler } from "./scheduler";
 import { BuildTree } from "../tree/build-tree";
 import { Executor } from "../executor/executor";
@@ -11,11 +12,18 @@ export class BuildScheduler implements Scheduler {
 
     private awarenessIntervalId?: NodeJS.Timeout;
 
+    private progressBar?: any;
+
     constructor(private executorsCount: number) {
         this.executors = Array.from(new Array(executorsCount), (_, k) => new Executor(k));
     }
 
     schedule(buildTree: BuildTree): Promise<boolean> {
+        terminal.fullscreen();
+        this.progressBar = terminal.progressBar({
+            title: 'Building...'
+        });
+        this.updateProgressBar(buildTree);
         return this.stopAllExecutors()
             .then(() => {
                 // Start all the executors.
@@ -25,8 +33,10 @@ export class BuildScheduler implements Scheduler {
                 return new Promise<boolean>((resolve, reject) => {
                     this.awarenessIntervalId = setInterval(() => {
                         const workResult = this.doWork(buildTree);
+                        this.updateProgressBar(buildTree);
 
                         if (workResult !== undefined) {
+                            this.progressBar.update(1);
                             this.stop();
                             resolve(workResult);
                         }
@@ -52,6 +62,12 @@ export class BuildScheduler implements Scheduler {
         }
 
         return undefined;
+    }
+
+    private updateProgressBar(buildTree: BuildTree): void {
+        const doneNodesRatio = buildTree.nodes.filter((n) => n.isDone()).length / buildTree.nodes.length;
+        const semiDoneRatio = 1 / (2 * buildTree.nodes.length);
+        this.progressBar.update(doneNodesRatio + (doneNodesRatio < 1 ? semiDoneRatio : 0));
     }
 
     private stop(): void {
