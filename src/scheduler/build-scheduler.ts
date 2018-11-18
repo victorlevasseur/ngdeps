@@ -39,7 +39,9 @@ export class BuildScheduler implements Scheduler {
     }
 
     private doWork(buildTree: BuildTree): boolean|undefined {
-        if (this.findErrors(buildTree)) {
+        const error = this.findErrors(buildTree);
+        if (error) {
+            console.error(error)
             return false;
         }
 

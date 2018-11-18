@@ -9,7 +9,7 @@ import { BuildScheduler } from './scheduler/build-scheduler';
 program
     .version('1.0')
     .usage('[options] target')
-    .option('--executors', 'The count of executors', parseInt, os.cpus().length)
+    .option('--executors [count]', 'The count of executors', parseInt, os.cpus().length)
     .option('--command <command>', 'Extra args to be passed to builders', '')
     .parse(process.argv);
 
