@@ -45,10 +45,9 @@ export class Executor {
         if (this.currentBuildingNode) {
             return this.currentBuildingNode.builder.stop()
                 .then(() => {
-                    if (!this.currentBuildingNode) {
-                        throw new Error('Should not happen!');
+                    if (this.currentBuildingNode) {
+                        this.currentBuildingNode.abort('Stopped!');
                     }
-                    this.currentBuildingNode.abort('Stopped!');
                     this.log('stopped.');
                 });
         } else {
@@ -107,6 +106,6 @@ export class Executor {
     }
 
     private log(message: string): void {
-        console.log(`Executor #${this.id}: ${message}`);
+        console.log(`[${this.id}] ${message}`);
     }
 }

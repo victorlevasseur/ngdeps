@@ -1,3 +1,5 @@
 node_modules
-bin
+bin/**/*.js
+bin/**/*.js.map
 yarn-error.log
+*.tgz

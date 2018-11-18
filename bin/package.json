@@ -1,6 +1,7 @@
 {
   "name": "ngdeps",
   "version": "1.0.0",
+  "main": "cli.js",
   "author": "Victor Levasseur",
   "license": "MIT",
   "devDependencies": {
@@ -14,12 +15,11 @@
     "ts-node": "^7.0.1",
     "typescript": "^3"
   },
-  "scripts": {
-    "prepack": "tsc",
-    "test": "TS_NODE_COMPILER_OPTIONS='{\"strict\":false}' mocha -r ts-node/register src/**/*.spec.ts"
-  },
   "dependencies": {
     "@types/commander": "^2.12.2",
     "commander": "^2.19.0"
+  },
+  "bin": {
+    "ngdeps": "./cli.js"
   }
 }

@@ -39,6 +39,10 @@ export class BuildScheduler implements Scheduler {
     }
 
     private doWork(buildTree: BuildTree): boolean|undefined {
+        if (this.findErrors(buildTree)) {
+            return false;
+        }
+
         this.updateNodeStatus(buildTree.target, []);
         if (buildTree.target.isDone()) {
             // If error, display error.
