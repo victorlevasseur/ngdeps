@@ -3,6 +3,7 @@ import { Scheduler } from "./scheduler";
 import { BuildTree } from "../tree/build-tree";
 import { Executor } from "../executor/executor";
 import { BuildNode } from "../tree/build-node";
+import { SpinnerManager } from "../tools/spinner-manager";
 
 export class BuildScheduler implements Scheduler {
 
@@ -14,16 +15,14 @@ export class BuildScheduler implements Scheduler {
 
     private progressBar?: any;
 
+    private spinners = new SpinnerManager([], '');
+
     constructor(private executorsCount: number) {
         this.executors = Array.from(new Array(executorsCount), (_, k) => new Executor(k));
     }
 
     schedule(buildTree: BuildTree): Promise<boolean> {
-        terminal.fullscreen();
-        this.progressBar = terminal.progressBar({
-            title: 'Building...'
-        });
-        this.updateProgressBar(buildTree);
+        this.initializeDisplay(buildTree);
         return this.stopAllExecutors()
             .then(() => {
                 // Start all the executors.
@@ -64,10 +63,30 @@ export class BuildScheduler implements Scheduler {
         return undefined;
     }
 
+    private initializeDisplay(buildTree: BuildTree): void {
+        terminal.fullscreen();
+        this.progressBar = terminal.progressBar({
+            title: 'Building...'
+        });
+
+        terminal.nextLine(2);
+        this.updateProgressBar(buildTree);
+
+        this.spinners = new SpinnerManager(buildTree.nodes.map((n) => n.moduleName), 'Starting...');
+    }
+
     private updateProgressBar(buildTree: BuildTree): void {
         const doneNodesRatio = buildTree.nodes.filter((n) => n.isDone()).length / buildTree.nodes.length;
         const semiDoneRatio = 1 / (2 * buildTree.nodes.length);
         this.progressBar.update(doneNodesRatio + (doneNodesRatio < 1 ? semiDoneRatio : 0));
+
+        buildTree.nodes.forEach((n) => {
+            if (n.isReadyForBuild() || n.isBuilding()) {
+                this.spinners.declareItemPending(n.moduleName);
+            } else if (n.isDone()) {
+                this.spinners.declareItemFinished(n.moduleName, n.isDoneWithSuccess());
+            }
+        })
     }
 
     private stop(): void {

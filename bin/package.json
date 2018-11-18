@@ -1,6 +1,6 @@
 {
   "name": "ngdeps",
-  "version": "1.0.9",
+  "version": "1.0.11",
   "main": "cli.js",
   "author": "Victor Levasseur",
   "license": "MIT",
@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "commander": "^2.19.0",
+    "ora": "^3.0.0",
     "terminal-kit": "^1.26.5"
   },
   "bin": {

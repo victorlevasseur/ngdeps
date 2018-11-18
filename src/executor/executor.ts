@@ -12,6 +12,8 @@ export class Executor {
 
     private currentBuildingNode?: BuildNode;
 
+    private currentBuildingNodeSpinner?: any;
+
     private isStopping = false;
 
     constructor(private id: number) {}
@@ -64,7 +66,6 @@ export class Executor {
             if (!newBuildingNode) {
                 return;
             }
-            this.log(`building ${newBuildingNode.moduleName}...`);
 
             this.currentBuildingNode = newBuildingNode;
             this.currentBuildingNode.building();
@@ -90,7 +91,7 @@ export class Executor {
             if (!this.isStopping && this.currentBuildingNode.isWaitingForDeps()) {
                 this.isStopping = true;
                 this.currentBuildingNode.builder.stop()
-                    .then(() => {
+                    .then(() => {   
                         this.isStopping = false;
                         // The node may have been built correctly just in the mean time.
                         if (this.currentBuildingNode) {
@@ -104,7 +105,7 @@ export class Executor {
     }
 
     private log(message: string): void {
-        terminal.bold(`[${this.id}] `);
-        terminal(`${message}\n`);
+        //terminal.bold(`[${this.id}] `);
+        //terminal(`${message}\n`);
     }
 }
