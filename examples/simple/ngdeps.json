@@ -1,0 +1,44 @@
+{
+    "modules": [
+        {
+            "name": "lib1",
+            "builder": "noop",
+            "dependencies": []
+        },
+        {
+            "name": "lib2",
+            "builder": "noop",
+            "dependencies": [ "lib1" ]
+        },
+        {
+            "name": "lib3",
+            "builder": "noop",
+            "dependencies": [ "lib1" ]
+        },
+        {
+            "name": "lib4",
+            "builder": "noop",
+            "dependencies": [ "lib1", "lib2", "lib3" ]
+        },
+        {
+            "name": "lib5",
+            "builder": "noop",
+            "dependencies": [ "lib1", "lib2", "lib3" ]
+        },
+        {
+            "name": "lib6",
+            "builder": "noop",
+            "dependencies": [ "lib4", "lib5" ]
+        },
+        {
+            "name": "lib7",
+            "builder": "noop",
+            "dependencies": [ "lib6" ]
+        },
+        {
+            "name": "lib8",
+            "builder": "noop",
+            "dependencies": [ "lib7" ]
+        }
+    ]
+}
